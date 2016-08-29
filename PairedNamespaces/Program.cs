@@ -18,11 +18,11 @@ namespace PairedNamespaces
 
 		static async Task MainAsync()
 		{ 
-			var connectionString1 = "Endpoint=sb://primary.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=";
+			var connectionString1 = "Endpoint=sb://primary-pairednamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=";
 			var namespaceManager1 = NamespaceManager.CreateFromConnectionString(connectionString1);
 			var messagingFactory1 = MessagingFactory.CreateFromConnectionString(connectionString1);
 
-			var connectionString2 = "Endpoint=sb://secondary.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=";
+			var connectionString2 = "Endpoint=sb://secondary-pairednamespace.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=";
 			var namespaceManager2 = NamespaceManager.CreateFromConnectionString(connectionString2);
 			var messagingFactory2 = MessagingFactory.CreateFromConnectionString(connectionString2);
 
@@ -41,22 +41,29 @@ namespace PairedNamespaces
 			await messagingFactory1.PairNamespaceAsync(sendAvailabilityPairedNamespaceOptions);
 
 			var sender1 = await messagingFactory1.CreateMessageSenderAsync("testing");
+			var receiver1 = await messagingFactory1.CreateMessageReceiverAsync("testing");
+		    var messageId = 1;
 
 			// Set a breakpoint here and modify hosts file to contain "0.0.0.0 primary-pairednamespace.servicebus.windows.net"
 			while (true)
 			{
 				try
 				{
-					var message = new BrokeredMessage("testing");
-					await sender1.SendAsync(message);
+					var message = new BrokeredMessage("testing") {MessageId = messageId++.ToString()};
+				    await sender1.SendAsync(message);
 					Console.WriteLine(".");
 				}
 				catch (Exception e)
 				{
+				    var me = (MessagingException) e;
 					Console.WriteLine(e.GetType());
+				    Console.WriteLine(me.Detail.ErrorCode);
+				    Console.WriteLine(me.Detail.ErrorLevel);
+				    Console.WriteLine(me.Detail.Message);
+				    Console.WriteLine(me.IsTransient);
 				}
-				
-				Thread.Sleep(2000);
+
+			    await Task.Delay(2000);
 			}
 			
 		}
